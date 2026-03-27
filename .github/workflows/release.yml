@@ -23,20 +23,28 @@ jobs:
         with:
           go-version: '1.20'
 
-      # Get last tag
       - name: Get last tag
         id: lasttag
         run: |
-          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+            last_tag=$(git describe --tags --abbrev=0)
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+          else
+            last_tag=""
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+          fi
           echo "last_tag=$last_tag" >> $GITHUB_OUTPUT
 
-      # Determine version bump
       - name: Determine bump type
         id: bump
         run: |
           set -euo pipefail
 
-          commits=$(git log ${{ steps.lasttag.outputs.last_tag }}..HEAD --pretty=format:"%s")
+          if [ "${{ steps.lasttag.outputs.has_tag }}" = "true" ]; then
+            commits=$(git log ${{ steps.lasttag.outputs.last_tag }}..HEAD --pretty=format:"%s")
+          else
+            commits=$(git log --pretty=format:"%s")
+          fi
 
           bump="patch"
 
@@ -50,14 +58,17 @@ jobs:
 
           echo "bump=$bump" >> $GITHUB_OUTPUT
 
-      # Calculate next version
       - name: Calculate next version
         id: ver
         run: |
           set -euo pipefail
 
-          last_tag=${{ steps.lasttag.outputs.last_tag }}
-          sem=${last_tag#v}
+          if [ "${{ steps.lasttag.outputs.has_tag }}" = "true" ]; then
+            sem=${{ steps.lasttag.outputs.last_tag }}
+            sem=${sem#v}
+          else
+            sem="0.0.0"
+          fi
 
           IFS=. read -r major minor patch <<< "$sem"
 
@@ -79,7 +90,6 @@ jobs:
           new_tag="v${major}.${minor}.${patch}"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      # Prevent duplicate tag
       - name: Check if tag exists
         run: |
           if git rev-parse "${{ steps.ver.outputs.new_tag }}" >/dev/null 2>&1; then
@@ -87,28 +97,25 @@ jobs:
             exit 1
           fi
 
-      # Generate changelog
       - name: Generate changelog
-        id: changelog
         run: |
-          last_tag=${{ steps.lasttag.outputs.last_tag }}
+          if [ "${{ steps.lasttag.outputs.has_tag }}" = "true" ]; then
+            git log ${{ steps.lasttag.outputs.last_tag }}..HEAD --pretty=format:"- %s" > CHANGELOG.md
+          else
+            git log --pretty=format:"- %s" > CHANGELOG.md
+          fi
 
-          echo "## Changes" > CHANGELOG.md
-          git log $last_tag..HEAD --pretty=format:"- %s" >> CHANGELOG.md
-
-      # 🏷 Create tag
-      - name: Create tag
+      - name: Create tag and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag ${{ steps.ver.outputs.new_tag }}
           git push origin ${{ steps.ver.outputs.new_tag }}
 
-      # Build
       - name: Build binary
-        run: make build
+        run: |
+          make build
 
-      # Package
       - name: Prepare deb package
         run: |
           set -euo pipefail
@@ -122,10 +129,17 @@ jobs:
           sed -i -e "s/^Version:.*$/Version: ${version}/" taskfix-deb/DEBIAN/control
 
           dpkg-deb --build taskfix-deb taskfix_${version}_amd64.deb
+
           cp taskfix_${version}_amd64.deb taskfix_latest_amd64.deb
 
-      # Release
-      - name: Create GitHub release
+      - name: Upload artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: taskfix-deb
+          path: |
+            taskfix_*_amd64.deb
+
+      - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.ver.outputs.new_tag }}
