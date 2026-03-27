@@ -1,0 +1,9 @@
+Package: taskfix
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Your Name abdo 
+Description: TaskFix - CLI tool to fix tasks with AI
+ A short description on the first line.
+ More detailed description here.

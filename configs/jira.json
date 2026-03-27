@@ -1,0 +1,12 @@
+{
+  "style": "jira",
+  "rules": [
+    "Fix all grammar and spelling errors",
+    "Use clear, professional technical language",
+    "Format output as a Jira issue with Summary, Description (with h3 Problem heading), and Acceptance Criteria checkboxes",
+    "Use Jira-compatible markdown: *bold*, _italic_, h3. headings",
+    "Be concise and specific",
+    "Add a Story Points estimate field if complexity can be inferred",
+    "The summary should be a short, imperative sentence (max 10 words)"
+  ]
+}

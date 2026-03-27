@@ -1,0 +1,12 @@
+{
+  "style": "default",
+  "rules": [
+    "Fix all grammar and spelling errors",
+    "Use clear, professional technical language",
+    "Structure the output with a Title, Description, and Acceptance Criteria",
+    "Use bullet points for description items and acceptance criteria",
+    "Be concise — remove filler words and redundancy",
+    "Infer missing context from the description where reasonable",
+    "The title should be a short, imperative sentence (max 10 words)"
+  ]
+}

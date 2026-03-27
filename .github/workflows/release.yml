@@ -1,0 +1,81 @@
+name: Build & Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Determine version
+        id: ver
+        run: |
+          set -euo pipefail
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Last tag: $last_tag"
+          sem=${last_tag#v}
+          IFS=. read -r major minor patch <<< "$sem"
+          patch=$((patch + 1))
+          new_tag="v${major}.${minor}.${patch}"
+          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Create tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.ver.outputs.new_tag }}
+          git push origin ${{ steps.ver.outputs.new_tag }}
+
+      - name: Build binary
+        run: |
+          make build
+
+      - name: Prepare deb package
+        run: |
+          set -euo pipefail
+
+          version=${{ steps.ver.outputs.new_tag }}
+          version=${version#v}
+
+          mkdir -p taskfix-deb/usr/local/bin
+          cp -f taskfix taskfix-deb/usr/local/bin/taskfix
+
+          sed -i -e "s/^Version:.*$/Version: ${version}/" taskfix-deb/DEBIAN/control
+
+          dpkg-deb --build taskfix-deb taskfix_${version}_amd64.deb
+
+          # Create stable "latest" file
+          cp taskfix_${version}_amd64.deb taskfix_latest_amd64.deb
+
+      - name: Upload artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: taskfix-deb
+          path: |
+            taskfix_*_amd64.deb
+
+      - name: Create GitHub release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.ver.outputs.new_tag }}
+          name: TaskFix ${{ steps.ver.outputs.new_tag }}
+          body: "TaskFix release ${{ steps.ver.outputs.new_tag }}"
+          files: |
+            taskfix_*_amd64.deb
+            taskfix_latest_amd64.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

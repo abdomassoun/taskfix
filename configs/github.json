@@ -1,0 +1,12 @@
+{
+  "style": "github",
+  "rules": [
+    "Fix all grammar and spelling errors",
+    "Use clear, professional technical language",
+    "Format output as a GitHub Issue using GitHub Flavored Markdown",
+    "Include sections: Title (## heading), Description, Steps to Reproduce (if applicable), Expected Behavior, Acceptance Criteria (checkboxes)",
+    "Use - [ ] syntax for acceptance criteria checkboxes",
+    "Be concise and developer-friendly",
+    "The title heading should be a short, imperative sentence (max 10 words)"
+  ]
+}
