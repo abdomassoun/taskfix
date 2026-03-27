@@ -145,7 +145,7 @@ jobs:
           name: TaskFix ${{ steps.ver.outputs.new_tag }}
           body_path: CHANGELOG.md
           files: |
-            taskfix_*_amd64.deb
+            taskfix_[0-9]*_amd64.deb
             taskfix_latest_amd64.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
