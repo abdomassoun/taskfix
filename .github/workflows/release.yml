@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -14,36 +17,98 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.20'
 
-      - name: Determine version
+      # Get last tag
+      - name: Get last tag
+        id: lasttag
+        run: |
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "last_tag=$last_tag" >> $GITHUB_OUTPUT
+
+      # Determine version bump
+      - name: Determine bump type
+        id: bump
+        run: |
+          set -euo pipefail
+
+          commits=$(git log ${{ steps.lasttag.outputs.last_tag }}..HEAD --pretty=format:"%s")
+
+          bump="patch"
+
+          if echo "$commits" | grep -q "BREAKING CHANGE"; then
+            bump="major"
+          elif echo "$commits" | grep -qE "feat!:"; then
+            bump="major"
+          elif echo "$commits" | grep -qE "^feat:"; then
+            bump="minor"
+          fi
+
+          echo "bump=$bump" >> $GITHUB_OUTPUT
+
+      # Calculate next version
+      - name: Calculate next version
         id: ver
         run: |
           set -euo pipefail
-          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Last tag: $last_tag"
+
+          last_tag=${{ steps.lasttag.outputs.last_tag }}
           sem=${last_tag#v}
+
           IFS=. read -r major minor patch <<< "$sem"
-          patch=$((patch + 1))
+
+          case "${{ steps.bump.outputs.bump }}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
           new_tag="v${major}.${minor}.${patch}"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      - name: Create tag and push
+      # Prevent duplicate tag
+      - name: Check if tag exists
+        run: |
+          if git rev-parse "${{ steps.ver.outputs.new_tag }}" >/dev/null 2>&1; then
+            echo "Tag already exists. Skipping release."
+            exit 1
+          fi
+
+      # Generate changelog
+      - name: Generate changelog
+        id: changelog
+        run: |
+          last_tag=${{ steps.lasttag.outputs.last_tag }}
+
+          echo "## Changes" > CHANGELOG.md
+          git log $last_tag..HEAD --pretty=format:"- %s" >> CHANGELOG.md
+
+      # 🏷 Create tag
+      - name: Create tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag ${{ steps.ver.outputs.new_tag }}
           git push origin ${{ steps.ver.outputs.new_tag }}
 
+      # Build
       - name: Build binary
-        run: |
-          make build
+        run: make build
 
+      # Package
       - name: Prepare deb package
         run: |
           set -euo pipefail
@@ -57,23 +122,15 @@ jobs:
           sed -i -e "s/^Version:.*$/Version: ${version}/" taskfix-deb/DEBIAN/control
 
           dpkg-deb --build taskfix-deb taskfix_${version}_amd64.deb
-
-          # Create stable "latest" file
           cp taskfix_${version}_amd64.deb taskfix_latest_amd64.deb
 
-      - name: Upload artifact (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: taskfix-deb
-          path: |
-            taskfix_*_amd64.deb
-
-      - name: Create GitHub release and upload assets
+      # Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.ver.outputs.new_tag }}
           name: TaskFix ${{ steps.ver.outputs.new_tag }}
-          body: "TaskFix release ${{ steps.ver.outputs.new_tag }}"
+          body_path: CHANGELOG.md
           files: |
             taskfix_*_amd64.deb
             taskfix_latest_amd64.deb
