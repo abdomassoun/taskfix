@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+
+# Create taskfix config directory if it doesn't exist
+if [ ! -d "/etc/taskfix" ]; then
+    mkdir -p /etc/taskfix
+fi
+
+# Set proper permissions
+chmod 755 /etc/taskfix
+chmod 644 /etc/taskfix/config
+
+# Inform user about configuration
+cat << 'EOF'
+
+┌──────────────────────────────────────────────────────────────┐
+│ TaskFix has been installed successfully!                     │
+└──────────────────────────────────────────────────────────────┘
+
+Configuration locations (priority order):
+  1. ~/.tfixrc                   (user config)
+  2. ~/.config/taskfix/config    (XDG config)
+  3. /etc/taskfix/config         (system-wide)
+
+To get started:
+  1. Add your OpenRouter API key to your config file:
+     
+     echo '{"api_key": "your-key-here", "model": "openai/gpt-4o-mini"}' > ~/.tfixrc
+     
+  2. Or set the environment variable:
+     
+     export OPENROUTER_API_KEY="your-key-here"
+     
+  3. Run taskfix:
+     
+     taskfix "user can't login when password is wrong"
+
+For more information: taskfix --help
+
+EOF
+
+exit 0

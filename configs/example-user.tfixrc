@@ -1,0 +1,6 @@
+{
+  "provider": "openrouter",
+  "api_key": "sk-or-v1-your-api-key-here",
+  "model": "openai/gpt-4o-mini",
+  "rules_file": ""
+}

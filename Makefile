@@ -43,7 +43,13 @@ run: build
 deb: build
 	@echo "Preparing deb package directory"
 	mkdir -p taskfix-deb/usr/local/bin
+	mkdir -p taskfix-deb/etc/taskfix
 	cp -f $(BINARY) taskfix-deb/usr/local/bin/$(BINARY)
+
+	# Ensure config file has correct name (no .json extension)
+	@if [ -f taskfix-deb/etc/taskfix/config.json ]; then \
+		mv taskfix-deb/etc/taskfix/config.json taskfix-deb/etc/taskfix/config; \
+	fi
 
 	# Ensure control file version matches Makefile VERSION
 	version=$$(echo $(VERSION) | sed 's/^v//') && \

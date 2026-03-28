@@ -3,7 +3,11 @@ Version: 1.0.0
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: Your Name abdo 
-Description: TaskFix - CLI tool to fix tasks with AI
- A short description on the first line.
- More detailed description here.
+Maintainer: abdemassoune@gmail.com
+Description: Transform raw task descriptions into structured tasks using AI
+ TaskFix turns messy task descriptions into clean, structured, AI-formatted
+ technical tasks — suitable for GitHub Issues, Jira, or any task tracker.
+ .
+ Configuration files:
+  - System-wide: /etc/taskfix/config
+  - User config: ~/.tfixrc or ~/.config/taskfix/config

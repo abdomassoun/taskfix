@@ -4,6 +4,25 @@
 
 ## Install
 
+### From .deb Package (Debian/Ubuntu)
+
+```bash
+# Download the latest release
+wget https://github.com/taskfix/taskfix/releases/latest/download/taskfix_latest_amd64.deb
+
+# Install the package
+sudo dpkg -i taskfix_latest_amd64.deb
+
+# If there are dependency issues, run:
+sudo apt-get install -f
+```
+
+The .deb package will install:
+- Binary: `/usr/local/bin/taskfix`
+- System config: `/etc/taskfix/config`
+
+### From Source
+
 ```bash
 git clone https://github.com/taskfix/taskfix
 cd taskfix
@@ -19,17 +38,48 @@ mv taskfix /usr/local/bin/taskfix
 
 ## Setup
 
-TaskFix requires an [OpenRouter](https://openrouter.ai) API key. Set it as an environment variable:
+TaskFix requires an [OpenRouter](https://openrouter.ai) API key. You have multiple options:
+
+### Option 1: User Configuration File (Recommended)
+
+Create `~/.tfixrc` with your API key:
+
+```bash
+cat > ~/.tfixrc << 'EOF'
+{
+  "api_key": "sk-or-v1-your-api-key-here",
+  "model": "openai/gpt-4o-mini"
+}
+EOF
+
+# Protect your API key
+chmod 600 ~/.tfixrc
+```
+
+### Option 2: Environment Variable
 
 ```bash
 export OPENROUTER_API_KEY=your_key_here
 ```
 
-Or pass it at runtime:
+Add to your `~/.bashrc` or `~/.zshrc` for persistence.
+
+### Option 3: Command-line Flag
 
 ```bash
 taskfix "bug description" --api-key your_key_here
 ```
+
+### Configuration Priority
+
+TaskFix searches for configuration in this order:
+
+1. `--config` flag (explicit path)
+2. `~/.tfixrc` (user config)
+3. `~/.config/taskfix/config` (XDG config)
+4. `/etc/taskfix/config` (system-wide config)
+
+Environment variables and CLI flags override file settings.
 
 ## Usage
 
@@ -57,7 +107,11 @@ taskfix "bug description" --rules my-rules.json
 ### Config file
 
 ```bash
-taskfix "bug description" --config taskfix.json
+# Use a custom config file
+taskfix "bug description" --config /path/to/config
+
+# Or let TaskFix auto-discover from default locations
+taskfix "bug description"
 ```
 
 ### Pipe to GitHub CLI
@@ -74,6 +128,8 @@ taskfix "task description" > task.md
 
 ## Config file format
 
+Create a config file at `~/.tfixrc`, `~/.config/taskfix/config`, or `/etc/taskfix/config`:
+
 ```json
 {
   "provider": "openrouter",
@@ -83,9 +139,9 @@ taskfix "task description" > task.md
 }
 ```
 
-Default config locations (auto-discovered if `--config` is not set):
-- `./taskfix.json`
-- `~/.config/taskfix/config.json`
+**Note:** All fields are optional. API key can be provided via environment variable or CLI flag.
+
+See [configs/README.md](configs/README.md) for detailed configuration examples and best practices.
 
 ## Custom rules format
 

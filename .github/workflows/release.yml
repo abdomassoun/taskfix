@@ -122,13 +122,25 @@ jobs:
           version=${{ steps.ver.outputs.new_tag }}
           version=${version#v}
 
+          # Create directory structure
           mkdir -p taskfix-deb/usr/local/bin
+          mkdir -p taskfix-deb/etc/taskfix
+          
+          # Copy binary
           cp -f taskfix taskfix-deb/usr/local/bin/taskfix
+          
+          # Ensure config file exists with correct name (no .json extension)
+          if [ -f "taskfix-deb/etc/taskfix/config.json" ]; then
+            mv taskfix-deb/etc/taskfix/config.json taskfix-deb/etc/taskfix/config
+          fi
 
+          # Update version in control file
           sed -i -e "s/^Version:.*$/Version: ${version}/" taskfix-deb/DEBIAN/control
 
+          # Build the .deb package
           dpkg-deb --build taskfix-deb taskfix_${version}_amd64.deb
 
+          # Create a "latest" symlink for convenience
           cp taskfix_${version}_amd64.deb taskfix_latest_amd64.deb
 
       - name: Upload artifact (optional)
