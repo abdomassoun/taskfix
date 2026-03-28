@@ -136,14 +136,7 @@ jobs:
               mv taskfix-deb/etc/taskfix/config.json taskfix-deb/etc/taskfix/config
             else
               # Create a default config file if neither exists
-              cat > taskfix-deb/etc/taskfix/config <<EOF
-{
-  "provider": "openrouter",
-  "model": "openai/gpt-4o-mini",
-  "api_key": "",
-  "rules_file": ""
-}
-EOF
+              echo '{"provider":"openrouter","model":"openai/gpt-4o-mini","api_key":"","rules_file":""}' > taskfix-deb/etc/taskfix/config
             fi
           fi
 
