@@ -129,9 +129,22 @@ jobs:
           # Copy binary
           cp -f taskfix taskfix-deb/usr/local/bin/taskfix
           
-          # Ensure config file exists with correct name (no .json extension)
-          if [ -f "taskfix-deb/etc/taskfix/config.json" ]; then
-            mv taskfix-deb/etc/taskfix/config.json taskfix-deb/etc/taskfix/config
+          # Ensure config file exists
+          if [ ! -f "taskfix-deb/etc/taskfix/config" ]; then
+            # If config.json exists, rename it to config
+            if [ -f "taskfix-deb/etc/taskfix/config.json" ]; then
+              mv taskfix-deb/etc/taskfix/config.json taskfix-deb/etc/taskfix/config
+            else
+              # Create a default config file if neither exists
+              cat > taskfix-deb/etc/taskfix/config <<EOF
+{
+  "provider": "openrouter",
+  "model": "openai/gpt-4o-mini",
+  "api_key": "",
+  "rules_file": ""
+}
+EOF
+            fi
           fi
 
           # Update version in control file
