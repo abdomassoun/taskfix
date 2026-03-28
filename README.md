@@ -1,3 +1,5 @@
+![TaskFix Banner](TFIX-README-header.png)
+
 # TaskFix
 
 > Transform messy task descriptions into clean, structured, AI-formatted technical tasks — from your terminal.
@@ -8,7 +10,7 @@
 
 ```bash
 # Download the latest release
-wget https://github.com/taskfix/taskfix/releases/latest/download/taskfix_latest_amd64.deb
+wget https://github.com/abdomassoun/taskfix/releases/latest/download/taskfix_latest_amd64.deb
 
 # Install the package
 sudo dpkg -i taskfix_latest_amd64.deb
