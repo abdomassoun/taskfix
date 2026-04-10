@@ -44,7 +44,9 @@ deb: build
 	@echo "Preparing deb package directory"
 	mkdir -p taskfix-deb/usr/local/bin
 	mkdir -p taskfix-deb/etc/taskfix
+	mkdir -p taskfix-deb/etc/taskfix/config.d
 	cp -f $(BINARY) taskfix-deb/usr/local/bin/$(BINARY)
+	cp -f configs/*.json taskfix-deb/etc/taskfix/config.d/
 
 	# Ensure config file has correct name (no .json extension)
 	@if [ -f taskfix-deb/etc/taskfix/config.json ]; then \

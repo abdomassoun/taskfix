@@ -1,1 +1,4 @@
 /etc/taskfix/config
+/etc/taskfix/config.d/default.json
+/etc/taskfix/config.d/github.json
+/etc/taskfix/config.d/jira.json

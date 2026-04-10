@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -15,13 +17,13 @@ import (
 )
 
 var (
-	flagConfig string
-	flagRules  string
-	flagFile   string
-	flagModel  string
-	flagAPIKey string
-	flagModelsAll     bool
-	flagSilent bool
+	flagConfig    string
+	flagRules     string
+	flagFile      string
+	flagModel     string
+	flagAPIKey    string
+	flagModelsAll bool
+	flagSilent    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -34,7 +36,7 @@ Examples:
   taskfix "user cant login when password wrong"
   echo "login bug" | taskfix
   taskfix -f input.txt
-  taskfix "bug" --rules configs/jira.json
+  taskfix "bug" --rules /etc/taskfix/config.d/jira.json
   taskfix "bug" --config taskfix.json
   taskfix "login bug" | gh issue create --title "Bug" --body -`,
 	Args: cobra.MaximumNArgs(1),
@@ -53,7 +55,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&flagFile, "file", "f", "", "read input from file instead of argument/stdin")
 	rootCmd.Flags().StringVarP(&flagModel, "model", "m", "", "AI model override (e.g. anthropic/claude-3-haiku)")
 	rootCmd.Flags().BoolVar(&flagModelsAll, "models", false, "list available models; optional pattern may be provided as first positional argument")
-	rootCmd.Flags().StringVarP(&flagAPIKey, "api-key", "k", "", "API key (overrides OPENROUTER_API_KEY env var)")
+	rootCmd.Flags().StringVarP(&flagAPIKey, "api-key", "k", "", "API key (overrides OPENROUTER_API_KEY env var; when used alone, saves to config)")
 	rootCmd.Flags().BoolVarP(&flagSilent, "silent", "s", false, "suppress stderr progress output")
 }
 
@@ -89,8 +91,23 @@ func run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	stdinPiped, err := isStdinPiped()
+	if err != nil {
+		return err
+	}
+
+	// If only --api-key is provided, persist it to config and exit.
+	if flagAPIKey != "" && len(args) == 0 && flagFile == "" && !stdinPiped {
+		configPath := defaultConfigPath(flagConfig)
+		if err := saveAPIKey(configPath, flagAPIKey); err != nil {
+			return fmt.Errorf("saving api key: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "API key saved to %s\n", configPath)
+		return nil
+	}
+
 	// ── 1. Resolve input ──────────────────────────────────────────────────────
-	input, err := resolveInput(args)
+	input, err := resolveInput(args, stdinPiped)
 	if err != nil {
 		return err
 	}
@@ -142,7 +159,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 // resolveInput returns the task text from -f flag, stdin pipe, or positional arg.
 // Priority: --file > stdin pipe > argument
-func resolveInput(args []string) (string, error) {
+func resolveInput(args []string, stdinPiped bool) (string, error) {
 	// --file flag takes highest priority
 	if flagFile != "" {
 		data, err := os.ReadFile(flagFile)
@@ -153,11 +170,7 @@ func resolveInput(args []string) (string, error) {
 	}
 
 	// Check if stdin is a pipe/redirect (not an interactive terminal)
-	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return "", fmt.Errorf("checking stdin: %w", err)
-	}
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
+	if stdinPiped {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", fmt.Errorf("reading stdin: %w", err)
@@ -171,6 +184,61 @@ func resolveInput(args []string) (string, error) {
 	}
 
 	return "", nil
+}
+
+func isStdinPiped() (bool, error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false, fmt.Errorf("checking stdin: %w", err)
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0, nil
+}
+
+func defaultConfigPath(path string) string {
+	if path == "" {
+		return filepath.Clean(os.ExpandEnv("$HOME/.tfixrc"))
+	}
+
+	if strings.HasPrefix(path, "~/") {
+		return filepath.Join(os.ExpandEnv("$HOME"), strings.TrimPrefix(path, "~/"))
+	}
+
+	return filepath.Clean(os.ExpandEnv(path))
+}
+
+func saveAPIKey(path, key string) error {
+	cfg := &Config{
+		Provider: defaultProvider,
+		Model:    defaultModel,
+	}
+
+	if data, err := os.ReadFile(path); err == nil {
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return fmt.Errorf("parsing existing config %q: %w", path, err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("reading config %q: %w", path, err)
+	}
+
+	cfg.APIKey = key
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("serializing config: %w", err)
+	}
+	data = append(data, '\n')
+
+	parent := filepath.Dir(path)
+	if parent != "." {
+		if err := os.MkdirAll(parent, 0o700); err != nil {
+			return fmt.Errorf("creating config directory %q: %w", parent, err)
+		}
+	}
+
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("writing config %q: %w", path, err)
+	}
+	return nil
 }
 
 // logf writes a styled message to stderr, unless --silent is set.

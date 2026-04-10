@@ -18,6 +18,7 @@ sudo apt-get install -f
 The package installs:
 - **Binary**: `/usr/local/bin/taskfix`
 - **System config**: `/etc/taskfix/config` (template with empty API key)
+- **Rule presets**: `/etc/taskfix/config.d/default.json`, `/etc/taskfix/config.d/github.json`, `/etc/taskfix/config.d/jira.json`
 
 ### Method 2: Build from Source
 
@@ -29,7 +30,9 @@ make build
 # Optional: Install system-wide
 sudo cp taskfix /usr/local/bin/
 sudo mkdir -p /etc/taskfix
+sudo mkdir -p /etc/taskfix/config.d
 sudo cp taskfix-deb/etc/taskfix/config /etc/taskfix/
+sudo cp configs/*.json /etc/taskfix/config.d/
 ```
 
 ## Configuration
@@ -90,7 +93,7 @@ sudo vim /etc/taskfix/config
   "provider": "openrouter",
   "model": "openai/gpt-4o-mini",
   "api_key": "",
-  "rules_file": "/etc/taskfix/rules.json"
+  "rules_file": "/etc/taskfix/config.d/default.json"
 }
 ```
 

@@ -2,7 +2,10 @@ package rules
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // RuleSet defines the formatting rules applied to the AI prompt.
@@ -30,11 +33,41 @@ func Default() *RuleSet {
 // Load reads a custom rules JSON file. Returns defaults if path is empty.
 func Load(path string) (*RuleSet, error) {
 	if path == "" {
+		if rs, err := loadFromFileIfExists(filepath.Join(systemRulesDir(), "default.json")); err != nil {
+			return nil, err
+		} else if rs != nil {
+			return rs, nil
+		}
 		return Default(), nil
 	}
 
+	candidates := []string{path}
+	if !filepath.IsAbs(path) {
+		candidates = append(candidates,
+			filepath.Join(systemRulesDir(), path),
+			filepath.Join(systemRulesDir(), filepath.Base(path)),
+		)
+	}
+
+	for _, candidate := range candidates {
+		rs, err := loadFromFileIfExists(candidate)
+		if err != nil {
+			return nil, err
+		}
+		if rs != nil {
+			return rs, nil
+		}
+	}
+
+	return nil, fmt.Errorf("rules file not found: %q", path)
+}
+
+func loadFromFileIfExists(path string) (*RuleSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -52,4 +85,11 @@ func Load(path string) (*RuleSet, error) {
 	}
 
 	return &rs, nil
+}
+
+func systemRulesDir() string {
+	if dir := os.Getenv("TASKFIX_RULES_DIR"); dir != "" {
+		return dir
+	}
+	return "/etc/taskfix/config.d"
 }

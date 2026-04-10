@@ -38,7 +38,7 @@ For system administrators, edit `/etc/taskfix/config` for all users:
   "provider": "openrouter",
   "model": "openai/gpt-4o-mini",
   "api_key": "",
-  "rules_file": "/etc/taskfix/rules.json"
+  "rules_file": "/etc/taskfix/config.d/default.json"
 }
 ```
 

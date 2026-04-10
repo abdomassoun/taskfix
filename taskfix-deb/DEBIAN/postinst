@@ -5,10 +5,17 @@ set -e
 if [ ! -d "/etc/taskfix" ]; then
     mkdir -p /etc/taskfix
 fi
+if [ ! -d "/etc/taskfix/config.d" ]; then
+    mkdir -p /etc/taskfix/config.d
+fi
 
 # Set proper permissions
 chmod 755 /etc/taskfix
 chmod 644 /etc/taskfix/config
+chmod 755 /etc/taskfix/config.d
+if [ -d /etc/taskfix/config.d ]; then
+    find /etc/taskfix/config.d -maxdepth 1 -type f -name '*.json' -exec chmod 644 {} \;
+fi
 
 # Inform user about configuration
 cat << 'EOF'
@@ -22,6 +29,11 @@ Configuration locations (priority order):
   2. ~/.config/taskfix/config    (XDG config)
   3. /etc/taskfix/config         (system-wide)
 
+Built-in rule presets:
+  - /etc/taskfix/config.d/default.json
+  - /etc/taskfix/config.d/github.json
+  - /etc/taskfix/config.d/jira.json
+
 To get started:
   1. Add your OpenRouter API key to your config file:
      
@@ -31,9 +43,14 @@ To get started:
      
      export OPENROUTER_API_KEY="your-key-here"
      
-  3. Run taskfix:
-     
-     taskfix "user can't login when password is wrong"
+   3. Run taskfix:
+      
+      taskfix "user can't login when password is wrong"
+
+   4. Use a preset or custom rules file:
+      
+      taskfix "login bug" --rules /etc/taskfix/config.d/github.json
+      taskfix "login bug" --rules /path/to/my-rules.json
 
 For more information: taskfix --help
 
