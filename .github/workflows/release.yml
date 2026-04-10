@@ -125,9 +125,11 @@ jobs:
           # Create directory structure
           mkdir -p taskfix-deb/usr/local/bin
           mkdir -p taskfix-deb/etc/taskfix
+          mkdir -p taskfix-deb/etc/taskfix/config.d
           
           # Copy binary
           cp -f taskfix taskfix-deb/usr/local/bin/taskfix
+          cp -f configs/*.json taskfix-deb/etc/taskfix/config.d/
           
           # Ensure config file exists
           if [ ! -f "taskfix-deb/etc/taskfix/config" ]; then
